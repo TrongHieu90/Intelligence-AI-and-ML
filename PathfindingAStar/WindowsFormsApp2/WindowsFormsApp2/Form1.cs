@@ -7,29 +7,43 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Security.Cryptography;
 
 namespace WindowsFormsApp2
 {
     public partial class Form1 : Form
     {
-        protected Spot[][] grid;
+        protected Spot[][] grid; //jagged array
         protected int rows = 30;
         protected int cols = 30;
         protected int c_width;
         protected int c_height;
 
-        protected List<Spot> openSet = new List<Spot>();
-        protected List<Spot> closedSet = new List<Spot>();
-        protected List<Spot> path = new List<Spot>();
+        protected List<Spot> openSet; //= new List<Spot>();
+        protected List<Spot> closedSet= new List<Spot>();
+        protected List<Spot> path;
 
         protected Spot startPoint;
         protected Spot endPoint;
         protected Spot currentPoint;
 
+        Graphics g;
+        Pen blackPen;
+        SolidBrush blackBrush;
+        SolidBrush greenBrush;
+        SolidBrush redBrush;
+        SolidBrush blueBrush;
+
         public Form1()
         {
             InitializeComponent();
             //SetStyle(ControlStyles.ResizeRedraw, true); //redraw during the resize
+            g = Canvas.CreateGraphics();
+            blackPen = new Pen(Brushes.Black, 1);
+            blackBrush = new SolidBrush(Color.Black);
+            greenBrush = new SolidBrush(Color.Green);
+            redBrush = new SolidBrush(Color.Red);
+            blueBrush = new SolidBrush(Color.Blue);
 
         }
 
@@ -50,8 +64,16 @@ namespace WindowsFormsApp2
                 this.i = i;
                 this.j = j;
 
-                Random random = new Random();
-                if(random.NextDouble() < 0.1)
+                //Default system rand is weak. It shows repeated pattern on our wall / obstacle spot
+                //Random random = new Random();             
+                //if(random.NextDouble() < 0.1)
+                //{
+                //    wall = true;
+                //}
+
+                //Using better crypto rand. Very good random wall/spot generation
+                RNGCryptoServiceProvider Rand = new RNGCryptoServiceProvider();
+                if (RandomInteger(Rand, 0, 10) < 3)
                 {
                     wall = true;
                 }
@@ -105,16 +127,11 @@ namespace WindowsFormsApp2
                     neighbors.Add(grid[i + 1][j + 1]);
                 }
             }
-
-            public void Display(PaintEventArgs e)
-            {
-
-            }
         }
 
         private int Heuristic(Spot node, Spot goal)
         {
-            //for implementing different Heuristic function see here: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#S7
+            //for implementing different Heuristic functions see here: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#S7
 
             //Euclidean square distance function
             var dist = Math.Sqrt(((node.i - goal.i) * (node.i - goal.i) + (node.j - goal.j) * (node.j - goal.j)));
@@ -145,22 +162,30 @@ namespace WindowsFormsApp2
             }
         }
 
+        private int RandomInteger(RNGCryptoServiceProvider Rand, int min, int max)
+        {
+            uint scale = uint.MaxValue;
+            while (scale == uint.MaxValue)
+            {
+                // Get four random bytes.
+                byte[] four_bytes = new byte[4];
+                Rand.GetBytes(four_bytes);
+
+                // Convert that into an uint.
+                scale = BitConverter.ToUInt32(four_bytes, 0);
+            }
+
+            // Add min to the scaled difference between max and min.
+            return (int)(min + (max - min) *
+                (scale / (double)uint.MaxValue));
+        }
+
         private void panel1_Paint(object sender, PaintEventArgs e) //main canvas/panel to draw
         {
-            //Graphics g;
-            //Pen blackPen = new Pen(Brushes.Black, 1);
-            //Pen greenPen = new Pen(Brushes.Green, 1);
-            //Pen redPen = new Pen(Brushes.Red, 1);
-            //Pen whitePen = new Pen(Brushes.White, 1);
-            //SolidBrush whiteBrush = new SolidBrush(Color.White);
-
-            //SolidBrush blueBrush = new SolidBrush(Color.Blue);
-
-            //Rectangle rect; 
-
             c_width = Canvas.Width / cols;
             c_height = Canvas.Height / rows;
 
+            //Creating the grid
             grid = new Spot[cols][];
 
             for(int i = 0; i < cols; i++)
@@ -176,6 +201,7 @@ namespace WindowsFormsApp2
                 }
             }
 
+            //Adding neighbors to each spot in grid
             for (int i = 0; i < cols; i++)
             {
                 for (int j = 0; j < rows; j++)
@@ -184,27 +210,39 @@ namespace WindowsFormsApp2
                 }
             }
 
+            //Setting some start point and end point arbitrarily
             startPoint = grid[0][0];
-            endPoint = grid[cols - 1][rows - 1];
+            endPoint = grid[cols -1][rows -1];
             startPoint.wall = false;
             endPoint.wall = false;
 
+            //Adding the predefined start point to the openSet
+            openSet = new List<Spot>();
             openSet.Add(startPoint);
 
- 
+            //Visualizing our grid 
+            for (int i = 0; i < cols; i++)
+            {
+                for (int j = 0; j < rows; j++)
+                {
+                    if (!grid[i][j].wall)
+                    {
+                        Rectangle rect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
+                        g.DrawRectangle(blackPen, rect);
+                    }
+                    else //coloring each wall spot with black color
+                    {
+                        Rectangle wallRect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
+                        g.FillRectangle(blackBrush, wallRect);
+                    }
+                }
+            }
+
 
         }
 
         private void button1_Click(object sender, EventArgs e) //draw button
         {
-            Graphics g = Canvas.CreateGraphics();
-            SolidBrush greenBrush = new SolidBrush(Color.Green);
-            SolidBrush redBrush = new SolidBrush(Color.Red);
-            SolidBrush blueBrush = new SolidBrush(Color.Blue);
-            SolidBrush blackBrush = new SolidBrush(Color.Black);
-            Pen blackPen = new Pen(Brushes.Black, 1);
-
-
             while (true)
             {
                 if (openSet.Count > 0)
@@ -226,9 +264,10 @@ namespace WindowsFormsApp2
                         break;
                     }
 
-                    //RemoveElement(openSet, currentPoint);
-                    openSet.RemoveAt(winner);
+                    RemoveElement(openSet, currentPoint);
+                    //openSet.RemoveAt(winner);
 
+                    //closedSet = new List<Spot>();
                     closedSet.Add(currentPoint);
 
                     var neighbors = currentPoint.neighbors;
@@ -274,6 +313,7 @@ namespace WindowsFormsApp2
                     break;
                 }
 
+                path = new List<Spot>();
                 var temp = currentPoint;
                 path.Add(temp);
                 while (temp.previous != null)
@@ -282,48 +322,24 @@ namespace WindowsFormsApp2
                     temp = temp.previous;
                 }
 
-                for (int i = 0; i < cols; i++)
-                {
-                    for (int j = 0; j < rows; j++)
-                    {   
-                        if(!grid[i][j].wall)
-                        {
-                            Rectangle rect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
-                            //blackPen = new Pen(Brushes.Black, 1);
-                            g.DrawRectangle(blackPen, rect);
-                        }
-                        else
-                        {
-                            Rectangle wallRect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
-                            g.FillRectangle(blackBrush, wallRect);
-                        }
-                    }
-                }
-
                 for (int i = 0; i < openSet.Count; i++)
-                {
-
+                {                   
                     Rectangle rectOpen = new Rectangle(openSet[i].i * c_width, openSet[i].j * c_height, c_width, c_height);
                     g.FillRectangle(greenBrush, rectOpen);
                 }
 
                 for (int i = 0; i < closedSet.Count; i++)
                 {
-
                     Rectangle rectClose = new Rectangle(closedSet[i].i * c_width, closedSet[i].j * c_height, c_width, c_height);
                     g.FillRectangle(redBrush, rectClose);
                 }
 
-                //this.Invalidate();
-
-                //for (var i = 0; i < path.Count; i++)
-                //{
-                //    Rectangle pathRect = new Rectangle(path[i].i * c_width, path[i].j * c_height, c_width, c_height);
-                //    g.FillRectangle(blueBrush, pathRect);
-                //}
-
-                Invalidate();
-
+                for (var i = 0; i < path.Count; i++)
+                {
+                    //Graphics r = Canvas.CreateGraphics();
+                    Rectangle pathRect = new Rectangle(path[i].i * c_width, path[i].j * c_height, c_width, c_height);
+                    g.FillRectangle(blueBrush, pathRect);
+                }
             }
         }
 
@@ -336,5 +352,8 @@ namespace WindowsFormsApp2
         {
 
         }
+
+
+    
     }
 }
