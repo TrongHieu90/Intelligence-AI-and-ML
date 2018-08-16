@@ -12,9 +12,9 @@ namespace WindowsFormsApp2
 {
     public partial class Form1 : Form
     {
-        protected Spot[,] grid;
-        protected int rows = 15;
-        protected int cols = 15;
+        protected Spot[][] grid;
+        protected int rows = 30;
+        protected int cols = 30;
         protected int c_width;
         protected int c_height;
 
@@ -41,7 +41,7 @@ namespace WindowsFormsApp2
             public int h = 0;
             public int g = 0;
             public List<Spot> neighbors = new List<Spot>();
-            public Spot previous;
+            public Spot previous = null;
             public bool wall = false;
 
 
@@ -58,7 +58,7 @@ namespace WindowsFormsApp2
 
             }
 
-            public void AddNeighbors(Spot[,] grid)
+            public void AddNeighbors(Spot[][] grid)
             {
                 int i = this.i;
                 int j = this.j;
@@ -66,25 +66,43 @@ namespace WindowsFormsApp2
                 //right adjacent spot
                 if (i < cols - 1)
                 {
-                    neighbors.Add(grid[i + 1, j]);
+                    neighbors.Add(grid[i + 1][j]);
                 }
 
                 //left adjacent spot
                 if (i > 0)
                 {
-                    neighbors.Add(grid[i - 1, j]);
+                    neighbors.Add(grid[i - 1][j]);
                 }
 
                 //up adjacent spot
                 if (j < rows - 1)
                 {
-                    neighbors.Add(grid[i, j + 1]);
+                    neighbors.Add(grid[i][j + 1]);
                 }
 
                 //down adjacent spot
                 if (j > 0)
                 {
-                    neighbors.Add(grid[i, j - 1]);
+                    neighbors.Add(grid[i][j - 1]);
+                }
+
+                //Diagonal Movement
+                if (i > 0 && j > 0)
+                {
+                    neighbors.Add(grid[i - 1][j - 1]);
+                }
+                if (i < cols - 1 && j > 0)
+                {
+                    neighbors.Add(grid[i + 1][j - 1]);
+                }
+                if (i > 0 && j < rows - 1)
+                {
+                    neighbors.Add(grid[i - 1][j + 1]);
+                }
+                if (i < cols - 1 && j < rows - 1)
+                {
+                    neighbors.Add(grid[i + 1][j + 1]);
                 }
             }
 
@@ -94,11 +112,26 @@ namespace WindowsFormsApp2
             }
         }
 
-        private int Heuristic(Spot a, Spot b)
+        private int Heuristic(Spot node, Spot goal)
         {
-            //Euclidean distance function
-            var dist = Math.Sqrt(((a.i - b.i) * (a.i - b.i) + (a.j - b.j) * (a.j - b.j)));
+            //for implementing different Heuristic function see here: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#S7
+
+            //Euclidean square distance function
+            var dist = Math.Sqrt(((node.i - goal.i) * (node.i - goal.i) + (node.j - goal.j) * (node.j - goal.j)));
             return (int)dist;
+
+            //Diagonal distance
+            //var D = 1;
+            //var D2 = 1;
+            //var dx = Math.Abs(node.i - goal.i);
+            //var dy = Math.Abs(node.j - goal.j);
+            //var dist = D * Math.Max(dx, dy) + (D2 - D) * Math.Min(dx, dy);
+            //return dist;
+
+            ////Manhattan distance
+            //var dx = Math.Abs(node.i - goal.i);
+            //var dy = Math.Abs(node.j - goal.j);
+            //return (int)(dx + dy);
         }
 
         private void RemoveElement(List<Spot> list, Spot element)
@@ -128,13 +161,18 @@ namespace WindowsFormsApp2
             c_width = Canvas.Width / cols;
             c_height = Canvas.Height / rows;
 
-            grid = new Spot[rows, cols];
+            grid = new Spot[cols][];
+
+            for(int i = 0; i < cols; i++)
+            {
+                grid[i] = new Spot[rows];
+            }
 
             for (int i = 0; i < cols; i++)
             {
                 for (int j = 0; j < rows; j++)
                 {
-                    grid[i, j] = new Spot(i, j);
+                    grid[i][j] = new Spot(i, j);
                 }
             }
 
@@ -142,12 +180,12 @@ namespace WindowsFormsApp2
             {
                 for (int j = 0; j < rows; j++)
                 {
-                    grid[i, j].AddNeighbors(grid);
+                    grid[i][j].AddNeighbors(grid);
                 }
             }
 
-            startPoint = grid[0, 0];
-            endPoint = grid[cols - 1, rows - 1];
+            startPoint = grid[0][0];
+            endPoint = grid[cols - 1][rows - 1];
             startPoint.wall = false;
             endPoint.wall = false;
 
@@ -188,7 +226,8 @@ namespace WindowsFormsApp2
                         break;
                     }
 
-                    RemoveElement(openSet, currentPoint);
+                    //RemoveElement(openSet, currentPoint);
+                    openSet.RemoveAt(winner);
 
                     closedSet.Add(currentPoint);
 
@@ -247,7 +286,7 @@ namespace WindowsFormsApp2
                 {
                     for (int j = 0; j < rows; j++)
                     {   
-                        if(!grid[i,j].wall)
+                        if(!grid[i][j].wall)
                         {
                             Rectangle rect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
                             //blackPen = new Pen(Brushes.Black, 1);
@@ -263,27 +302,28 @@ namespace WindowsFormsApp2
 
                 for (int i = 0; i < openSet.Count; i++)
                 {
-                    //Console.WriteLine($"openSet.Count is: {openSet.Count}");
-                    //Console.WriteLine($"openSet loc is {openSet[i].i} and {openSet[i].j}");
+
                     Rectangle rectOpen = new Rectangle(openSet[i].i * c_width, openSet[i].j * c_height, c_width, c_height);
                     g.FillRectangle(greenBrush, rectOpen);
                 }
 
                 for (int i = 0; i < closedSet.Count; i++)
                 {
-                    //Console.WriteLine($"openSet.Count is: {openSet.Count}");
-                    //Console.WriteLine($"closedSet loc is {closedSet[i].i} and {closedSet[i].j}");
+
                     Rectangle rectClose = new Rectangle(closedSet[i].i * c_width, closedSet[i].j * c_height, c_width, c_height);
                     g.FillRectangle(redBrush, rectClose);
                 }
 
                 //this.Invalidate();
 
-                for (var i = 0; i < path.Count; i++)
-                {
-                    Rectangle pathRect = new Rectangle(path[i].i * c_width, path[i].j * c_height, c_width, c_height);
-                    g.FillRectangle(blueBrush, pathRect);
-                }
+                //for (var i = 0; i < path.Count; i++)
+                //{
+                //    Rectangle pathRect = new Rectangle(path[i].i * c_width, path[i].j * c_height, c_width, c_height);
+                //    g.FillRectangle(blueBrush, pathRect);
+                //}
+
+                Invalidate();
+
             }
         }
 
