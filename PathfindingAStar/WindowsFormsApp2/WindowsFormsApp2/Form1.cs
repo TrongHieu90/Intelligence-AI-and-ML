@@ -29,11 +29,11 @@ namespace WindowsFormsApp2
         public Form1()
         {
             InitializeComponent();
-            SetStyle(ControlStyles.ResizeRedraw, true); //redraw during the resize
+            //SetStyle(ControlStyles.ResizeRedraw, true); //redraw during the resize
 
         }
 
-        public class Spot:Form1
+        public class Spot : Form1
         {
             public int i;
             public int j;
@@ -42,11 +42,19 @@ namespace WindowsFormsApp2
             public int g = 0;
             public List<Spot> neighbors = new List<Spot>();
             public Spot previous;
+            public bool wall = false;
+
 
             public Spot(int i, int j)
             {
                 this.i = i;
                 this.j = j;
+
+                Random random = new Random();
+                if(random.NextDouble() < 0.1)
+                {
+                    wall = true;
+                }
 
             }
 
@@ -106,13 +114,13 @@ namespace WindowsFormsApp2
 
         private void panel1_Paint(object sender, PaintEventArgs e) //main canvas/panel to draw
         {
+            //Graphics g;
             //Pen blackPen = new Pen(Brushes.Black, 1);
             //Pen greenPen = new Pen(Brushes.Green, 1);
             //Pen redPen = new Pen(Brushes.Red, 1);
             //Pen whitePen = new Pen(Brushes.White, 1);
             //SolidBrush whiteBrush = new SolidBrush(Color.White);
-            //SolidBrush greenBrush = new SolidBrush(Color.Green);
-            //SolidBrush redBrush = new SolidBrush(Color.Red);
+
             //SolidBrush blueBrush = new SolidBrush(Color.Blue);
 
             //Rectangle rect; 
@@ -126,7 +134,7 @@ namespace WindowsFormsApp2
             {
                 for (int j = 0; j < rows; j++)
                 {
-                    grid[i, j] = new Spot(i, j);                                       
+                    grid[i, j] = new Spot(i, j);
                 }
             }
 
@@ -140,19 +148,24 @@ namespace WindowsFormsApp2
 
             startPoint = grid[0, 0];
             endPoint = grid[cols - 1, rows - 1];
+            startPoint.wall = false;
+            endPoint.wall = false;
 
             openSet.Add(startPoint);
 
+ 
 
-            for (int i = 0; i < cols; i++)
-            {
-                for (int j = 0; j < rows; j++)
-                {
-                    Pen blackPen = new Pen(Brushes.Black, 1);
-                    Rectangle rect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
-                    e.Graphics.DrawRectangle(blackPen, rect);
-                }
-            }
+        }
+
+        private void button1_Click(object sender, EventArgs e) //draw button
+        {
+            Graphics g = Canvas.CreateGraphics();
+            SolidBrush greenBrush = new SolidBrush(Color.Green);
+            SolidBrush redBrush = new SolidBrush(Color.Red);
+            SolidBrush blueBrush = new SolidBrush(Color.Blue);
+            SolidBrush blackBrush = new SolidBrush(Color.Black);
+            Pen blackPen = new Pen(Brushes.Black, 1);
+
 
             while (true)
             {
@@ -180,15 +193,15 @@ namespace WindowsFormsApp2
                     closedSet.Add(currentPoint);
 
                     var neighbors = currentPoint.neighbors;
-                    
 
-                    Console.WriteLine($"current point pos is: {currentPoint.i},{currentPoint.j} and the neighbors.count is: {neighbors.Count}");
+
+                    //Console.WriteLine($"current point pos is: {currentPoint.i},{currentPoint.j} and the neighbors.count is: {currentPoint.neighbors.Count}");
                     //checking each neighbor Spot
                     for (int i = 0; i < neighbors.Count; i++)
                     {
                         //Console.WriteLine("checking neighbors");
                         var neighbor = neighbors[i];
-                        if (!closedSet.Contains(neighbor))
+                        if (!closedSet.Contains(neighbor) && !neighbor.wall)
                         {
                             var tempG = currentPoint.g + 1;
                             var newPath = false;
@@ -219,36 +232,59 @@ namespace WindowsFormsApp2
                 else
                 {
                     Console.WriteLine("No pathfinding solution");
-                    return;
+                    break;
                 }
 
+                var temp = currentPoint;
+                path.Add(temp);
+                while (temp.previous != null)
+                {
+                    path.Add(temp.previous);
+                    temp = temp.previous;
+                }
 
+                for (int i = 0; i < cols; i++)
+                {
+                    for (int j = 0; j < rows; j++)
+                    {   
+                        if(!grid[i,j].wall)
+                        {
+                            Rectangle rect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
+                            //blackPen = new Pen(Brushes.Black, 1);
+                            g.DrawRectangle(blackPen, rect);
+                        }
+                        else
+                        {
+                            Rectangle wallRect = new Rectangle(i * c_width, j * c_height, c_width, c_height);
+                            g.FillRectangle(blackBrush, wallRect);
+                        }
+                    }
+                }
 
+                for (int i = 0; i < openSet.Count; i++)
+                {
+                    //Console.WriteLine($"openSet.Count is: {openSet.Count}");
+                    //Console.WriteLine($"openSet loc is {openSet[i].i} and {openSet[i].j}");
+                    Rectangle rectOpen = new Rectangle(openSet[i].i * c_width, openSet[i].j * c_height, c_width, c_height);
+                    g.FillRectangle(greenBrush, rectOpen);
+                }
 
-                //for (int i = 0; i < openSet.Count; i++)
-                //{
-                //    for (int j = 0; j < openSet.Count; j++)
-                //    {
-                //        Rectangle rectOpen = new Rectangle(i * c_width, j * c_height, c_width, c_height);
-                //        e.Graphics.FillRectangle(greenBrush, rectOpen);
-                //    }
-                //}
+                for (int i = 0; i < closedSet.Count; i++)
+                {
+                    //Console.WriteLine($"openSet.Count is: {openSet.Count}");
+                    //Console.WriteLine($"closedSet loc is {closedSet[i].i} and {closedSet[i].j}");
+                    Rectangle rectClose = new Rectangle(closedSet[i].i * c_width, closedSet[i].j * c_height, c_width, c_height);
+                    g.FillRectangle(redBrush, rectClose);
+                }
 
-                //for (int i = 0; i < closedSet.Count; i++)
-                //{
-                //    for (int j = 0; j < closedSet.Count; j++)
-                //    {
-                //        Rectangle rectclose = new Rectangle(i * c_width, j * c_height, c_width, c_height);
-                //        e.Graphics.FillRectangle(redBrush, rectclose);
-                //    }
-                //}
+                //this.Invalidate();
 
+                for (var i = 0; i < path.Count; i++)
+                {
+                    Rectangle pathRect = new Rectangle(path[i].i * c_width, path[i].j * c_height, c_width, c_height);
+                    g.FillRectangle(blueBrush, pathRect);
+                }
             }
-        }
-
-        private void button1_Click(object sender, EventArgs e) //draw button
-        {
-
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -260,5 +296,5 @@ namespace WindowsFormsApp2
         {
 
         }
-    }       
+    }
 }
